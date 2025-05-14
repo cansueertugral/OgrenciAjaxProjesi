@@ -1,0 +1,126 @@
+﻿@{
+    ViewData["Title"] = "Öğrenci Listesi";
+}
+
+<h2>Öğrenci İşlemleri (AJAX)</h2>
+
+<hr />
+
+
+<form id="ekleForm" method="post">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="Id" id="ogrenciId" />
+
+    <div class="form-group">
+        <label>Ad:</label>
+        <input type="text" name="Ad" class="form-control" required id="adInput" />
+    </div>
+
+    <div class="form-group">
+        <label>Soyad:</label>
+        <input type="text" name="Soyad" class="form-control" required id="soyadInput" />
+    </div>
+
+    <br />
+    <button type="submit" class="btn btn-primary" id="formBtn">Ekle</button>
+</form>
+
+<hr />
+
+
+<table class="table table-bordered mt-3">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Ad</th>
+            <th>Soyad</th>
+            <th>İşlemler</th>
+        </tr>
+    </thead>
+    <tbody id="ogrenciTablo"></tbody>
+</table>
+
+@section Scripts {
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <script>
+        $(document).ready(function () {
+
+            var token = $('input[name="__RequestVerificationToken"]').val();
+            $.ajaxSetup({
+                headers: { 'RequestVerificationToken': token }
+            });
+
+            function listele() {
+                $.getJSON("/Ogrenci/OgrenciList", function (data) {
+                    var html = "";
+                    $.each(data, function (i, ogr) {
+                        html += `<tr>
+                                            <td>${ogr.id}</td>
+                                            <td>${ogr.ad}</td>
+                                            <td>${ogr.soyad}</td>
+                                            <td>
+                                                <button class="btn btn-warning btn-sm guncelleBtn" data-id="${ogr.id}" data-ad="${ogr.ad}" data-soyad="${ogr.soyad}">Güncelle</button>
+                                                <button class="btn btn-danger btn-sm silBtn" data-id="${ogr.id}">Sil</button>
+                                            </td>
+                                        </tr>`;
+                    });
+                    $('#ogrenciTablo').html(html);
+                });
+            }
+
+            listele();
+
+            $('#ekleForm').on('submit', function (e) {
+                e.preventDefault();
+                var formData = $(this).serialize();
+                var isUpdate = $('#ogrenciId').val() !== "";
+
+                $.ajax({
+                    url: isUpdate ? '/Ogrenci/Update' : '/Ogrenci/Create',
+                    type: 'POST',
+                    data: formData,
+                    success: function (res) {
+                        if (res.success) {
+                            alert(res.message);
+                            listele();
+                            $('#ekleForm')[0].reset();
+                            $('#formBtn').text("Ekle");
+                        } else {
+                            alert("Hata: " + res.message);
+                        }
+                    }
+                });
+            });
+
+            $(document).on('click', '.guncelleBtn', function () {
+                $('#ogrenciId').val($(this).data('id'));
+                $('#adInput').val($(this).data('ad'));
+                $('#soyadInput').val($(this).data('soyad'));
+                $('#formBtn').text("Güncelle");
+            });
+
+            $(document).on('click', '.silBtn', function () {
+                var id = $(this).data('id');
+                if (confirm("Silmek istediğine emin misin?")) {
+                    $.ajax({
+                        url: '/Ogrenci/Delete',
+                        type: 'POST',
+                        data: {
+                            __RequestVerificationToken: token,
+                            id: id
+                        },
+                        success: function (res) {
+                            if (res.success) {
+                                alert(res.message);
+                                listele();
+                            } else {
+                                alert("Hata: " + res.message);
+                            }
+                        }
+                    });
+                }
+            });
+        });
+    </script>
+}
